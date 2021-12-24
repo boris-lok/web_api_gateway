@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+  auth_database:
+    container_name: auth_database
+    build: .
+    restart: always
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    env_file:
+      - ../dev.env
+
+volumes:
+  postgres:

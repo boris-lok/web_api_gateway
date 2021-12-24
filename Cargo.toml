@@ -32,3 +32,6 @@ features = ["v4", "serde"]
 
 [dependencies.async-trait]
 version = "0.1.52"
+
+[dependencies.dotenv]
+version = "0.15.0"
