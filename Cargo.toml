@@ -20,11 +20,15 @@ features = ["derive"]
 
 [dependencies.sqlx]
 version = "0.5.9"
-features = ["runtime-tokio-rustls", "all-types"]
+features = ["runtime-tokio-rustls", "all-types", "postgres"]
 
 [dependencies.chrono]
 version = "0.4.19"
+features = ["serde"]
 
 [dependencies.uuid]
 version = "0.8.2"
-features = ["v4"]
+features = ["v4", "serde"]
+
+[dependencies.async-trait]
+version = "0.1.52"
