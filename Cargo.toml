@@ -42,3 +42,6 @@ version = "0.15.0"
 [dependencies.sea-query]
 version = "0.20.0"
 features = ["derive", "postgres-types"]
+
+[dependencies.mockall]
+version = "0.11.0"
