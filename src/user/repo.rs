@@ -31,11 +31,11 @@ pub trait UserRepository {
 }
 
 #[derive(Clone)]
-pub struct PostgresRepository {
+pub struct PostgresUserRepository {
     connection_pool: Arc<Pool<Postgres>>,
 }
 
-impl PostgresRepository {
+impl PostgresUserRepository {
     pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
         Self {
             connection_pool: pool,
@@ -44,7 +44,7 @@ impl PostgresRepository {
 }
 
 #[async_trait]
-impl UserRepository for PostgresRepository {
+impl UserRepository for PostgresUserRepository {
     async fn create(&mut self, user: &User) -> Result<SimpleUser, AppError> {
         let sql = Query::insert()
             .into_table(Users::Table)
