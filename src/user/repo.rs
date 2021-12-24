@@ -31,9 +31,9 @@ pub struct PostgresRepository {
 }
 
 impl PostgresRepository {
-    pub fn new(pool: Pool<Postgres>) -> Self {
+    pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
         Self {
-            connection_pool: Arc::new(pool),
+            connection_pool: pool,
         }
     }
 }
@@ -99,14 +99,14 @@ impl UserRepository for MockUserRepository {
             .iter()
             .skip(offset)
             .take(page_size)
-            .map(|x| x.clone())
+            .cloned()
             .collect();
 
         Ok(s1)
     }
 
     async fn find(&self, username: &str) -> Result<Option<SimpleUser>, AppError> {
-        for (_, v) in &self.data {
+        for v in self.data.values() {
             if v.name == username {
                 return Ok(Some(v.clone()));
             }
