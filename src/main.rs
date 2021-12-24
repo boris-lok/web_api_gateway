@@ -1,9 +1,11 @@
+#![allow(unused_variables, dead_code)]
+
 use std::sync::Arc;
 
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 
-use crate::user::repo::{PostgresRepository, UserRepository};
+use crate::user::repo::PostgresRepository;
 
 mod auth;
 mod core;
@@ -12,7 +14,7 @@ mod user;
 #[tokio::main]
 async fn main() {
     let debug = dotenv::var("DEBUG")
-        .map(|x| x.parse::<bool>().unwrap_or_else(|_| true))
+        .map(|x| x.parse::<bool>().unwrap_or(true))
         .unwrap_or_else(|_| true);
 
     if debug {

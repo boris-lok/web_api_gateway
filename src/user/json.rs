@@ -11,7 +11,19 @@ pub struct SimpleUser {
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-#[derive(Debug)]
+impl From<User> for SimpleUser {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id.unwrap_or_else(uuid::Uuid::new_v4),
+            name: user.name,
+            role: user.role,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct User {
     pub id: Option<uuid::Uuid>,
     pub name: String,

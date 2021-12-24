@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -24,7 +23,11 @@ pub trait UserRepository {
         page_size: usize,
     ) -> Result<Vec<SimpleUser>, AppError>;
 
-    async fn find_by_username(&self, username: &str) -> Result<Option<SimpleUser>, AppError>;
+    async fn check_user_is_exist(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<Option<SimpleUser>, AppError>;
 }
 
 #[derive(Clone)]
@@ -142,10 +145,14 @@ impl UserRepository for PostgresRepository {
 
         dbg!(&simple_users);
 
-        simple_users.map_err(|e| AppError::DatabaseError)
+        simple_users.map_err(|_| AppError::DatabaseError)
     }
 
-    async fn find_by_username(&self, username: &str) -> Result<Option<SimpleUser>, AppError> {
+    async fn check_user_is_exist(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<Option<SimpleUser>, AppError> {
         let sql = Query::select()
             .columns(vec![
                 Users::Id,
@@ -156,6 +163,7 @@ impl UserRepository for PostgresRepository {
             ])
             .from(Users::Table)
             .and_where(Expr::col(Users::Name).eq(username))
+            .and_where(Expr::col(Users::Password).eq(password))
             .to_string(PostgresQueryBuilder);
 
         dbg!(&sql);
@@ -171,7 +179,7 @@ impl UserRepository for PostgresRepository {
 }
 
 pub struct MockUserRepository {
-    data: HashMap<uuid::Uuid, SimpleUser>,
+    data: HashMap<uuid::Uuid, User>,
 }
 
 impl MockUserRepository {
@@ -193,13 +201,13 @@ impl UserRepository for MockUserRepository {
             created_at: user.created_at,
             updated_at: user.updated_at,
         };
-        self.data.insert(id.clone(), simple_user.clone());
+        self.data.insert(id, user.clone());
         Ok(simple_user)
     }
 
     async fn get(&self, id: &Uuid) -> Result<Option<SimpleUser>, AppError> {
         let user = self.data.get(id);
-        Ok(user.cloned())
+        Ok(user.map(|user| user.clone().into()))
     }
 
     async fn list(
@@ -214,7 +222,7 @@ impl UserRepository for MockUserRepository {
             page_size
         };
         let mut result = Vec::with_capacity(capacity);
-        let keys: Vec<_> = self.data.iter().map(|x| x.0.clone()).collect();
+        let keys: Vec<_> = self.data.iter().map(|x| *x.0).collect();
         let count = &self.data.len();
         for i in 0..*count {
             let key = keys.get(i).unwrap();
@@ -231,15 +239,23 @@ impl UserRepository for MockUserRepository {
             }
         }
 
-        let s1: Vec<_> = result.iter().take(page_size).cloned().collect();
+        let s1: Vec<_> = result
+            .iter()
+            .take(page_size)
+            .map(|x| x.clone().into())
+            .collect();
 
         Ok(s1)
     }
 
-    async fn find_by_username(&self, username: &str) -> Result<Option<SimpleUser>, AppError> {
+    async fn check_user_is_exist(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<Option<SimpleUser>, AppError> {
         for v in self.data.values() {
-            if v.name == username {
-                return Ok(Some(v.clone()));
+            if v.name == username && v.password == password {
+                return Ok(Some(v.clone().into()));
             }
         }
         Ok(None)
@@ -255,7 +271,7 @@ mod tests {
     use super::*;
 
     impl User {
-        fn mock(name: &str) -> Self {
+        pub fn mock(name: &str) -> Self {
             Self {
                 id: None,
                 name: name.to_string(),
@@ -276,7 +292,7 @@ mod tests {
         assert!(predict_user.is_ok());
         let predict_user = predict_user.ok().unwrap();
         assert_eq!(predict_user.name, "boris".to_string());
-        assert_eq!(predict_user.role, "admin".to_string());
+        assert_eq!(predict_user.role, 0);
     }
 
     #[test]
@@ -289,7 +305,7 @@ mod tests {
         assert!(predict_user.is_ok());
         let predict_user = predict_user.ok().flatten().unwrap();
         assert_eq!(predict_user.name, "boris".to_string());
-        assert_eq!(predict_user.role, "admin".to_string());
+        assert_eq!(predict_user.role, 0);
     }
 
     #[test]
@@ -326,7 +342,7 @@ mod tests {
         let mut repo = MockUserRepository::new();
         let user = User::mock("boris");
         let result = runtime.block_on(repo.create(&user));
-        let predict_user = runtime.block_on(repo.find_by_username("boris"));
+        let predict_user = runtime.block_on(repo.check_user_is_exist("boris"));
         assert!(predict_user.is_ok());
         let predict_user = predict_user.ok().flatten();
         assert!(predict_user.is_some());
@@ -338,7 +354,7 @@ mod tests {
         let mut repo = MockUserRepository::new();
         let user = User::mock("boris");
         let result = runtime.block_on(repo.create(&user));
-        let predict_user = runtime.block_on(repo.find_by_username("boris1"));
+        let predict_user = runtime.block_on(repo.check_user_is_exist("boris1"));
         assert!(predict_user.is_ok());
         let predict_user = predict_user.ok().flatten();
         assert!(predict_user.is_none());
