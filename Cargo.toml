@@ -35,3 +35,7 @@ version = "0.1.52"
 
 [dependencies.dotenv]
 version = "0.15.0"
+
+[dependencies.sea-query]
+version = "0.20.0"
+features = ["derive", "postgres-types"]

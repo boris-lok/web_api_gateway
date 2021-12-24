@@ -1,7 +1,9 @@
-use crate::user::repo::PostgresRepository;
+use std::sync::Arc;
+
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
-use std::sync::Arc;
+
+use crate::user::repo::{PostgresRepository, UserRepository};
 
 mod auth;
 mod core;
@@ -24,7 +26,7 @@ async fn main() {
         .expect("Can't create a database connection pool.");
 
     let connection_pool = Arc::new(connection_pool);
-    let repo = PostgresRepository::new(Arc::clone(&connection_pool));
+    let mut repo = PostgresRepository::new(Arc::clone(&connection_pool));
 
     connection_pool.close().await;
 }
