@@ -1,23 +1,32 @@
-use crate::auth::json::{Token, Tokens};
+use std::sync::Arc;
+
 use async_trait::async_trait;
-use mockall::predicate::*;
 use mockall::*;
+use mockall::predicate::*;
 use sea_query::{Expr, PostgresQueryBuilder, Query};
 use sqlx::{Pool, Postgres};
-use std::collections::HashMap;
-use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::auth::json::{Token, Tokens};
 use crate::core::error::AppError;
 
 #[automock]
 #[async_trait]
 pub trait AuthRepository {
-    async fn create(&self, id: uuid::Uuid, token: &str, after_days: u8) -> Result<Token, AppError>;
+    async fn create(
+        &self,
+        id: uuid::Uuid,
+        token: &str,
+        expired_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Token, AppError>;
 
     async fn expire(&self, id: uuid::Uuid) -> Result<(), AppError>;
 
-    async fn renew(&self, id: uuid::Uuid, after_days: u8) -> Result<(), AppError>;
+    async fn renew(
+        &self,
+        id: uuid::Uuid,
+        expired_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<(), AppError>;
 }
 
 struct PostgresAuthRepository {
@@ -48,7 +57,7 @@ impl PostgresAuthRepository {
             .execute(&*self.connection_pool)
             .await
             .map(|res| res.rows_affected())
-            .map_err(|e| AppError::DatabaseError(e));
+            .map_err(AppError::DatabaseError);
 
         dbg!(&res);
 
@@ -58,9 +67,12 @@ impl PostgresAuthRepository {
 
 #[async_trait]
 impl AuthRepository for PostgresAuthRepository {
-    async fn create(&self, id: Uuid, token: &str, after_days: u8) -> Result<Token, AppError> {
-        let expired_at = chrono::Utc::now() + chrono::Duration::days(after_days as i64);
-
+    async fn create(
+        &self,
+        id: Uuid,
+        token: &str,
+        expired_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Token, AppError> {
         let sql = Query::insert()
             .into_table(Tokens::Table)
             .columns(vec![Tokens::UserId, Tokens::Token, Tokens::ExpiredAt])
@@ -81,7 +93,7 @@ impl AuthRepository for PostgresAuthRepository {
         let token = sqlx::query_as::<_, Token>(sql.as_str())
             .fetch_one(&*self.connection_pool)
             .await
-            .map_err(|e| AppError::DatabaseError(e));
+            .map_err(AppError::DatabaseError);
 
         dbg!(&token);
 
@@ -94,9 +106,11 @@ impl AuthRepository for PostgresAuthRepository {
         self.update_expired_at(id, expired_at).await
     }
 
-    async fn renew(&self, id: Uuid, after_days: u8) -> Result<(), AppError> {
-        let expired_at = chrono::Utc::now() + chrono::Duration::days(after_days as i64);
-
+    async fn renew(
+        &self,
+        id: Uuid,
+        expired_at: chrono::DateTime<chrono::Utc>,
+    ) -> Result<(), AppError> {
         self.update_expired_at(id, expired_at).await
     }
 }

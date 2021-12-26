@@ -36,12 +36,15 @@ features = ["v4", "serde"]
 [dependencies.async-trait]
 version = "0.1.52"
 
-[dependencies.dotenv]
-version = "0.15.0"
-
 [dependencies.sea-query]
 version = "0.20.0"
 features = ["derive", "postgres-types"]
 
+[dependencies.jsonwebtoken]
+version = "7.2.0"
+
 [dependencies.mockall]
 version = "0.11.0"
+
+[dependencies.dotenv]
+version = "0.15.0"

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -86,7 +85,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_user = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_one(&*self.connection_pool)
             .await
-            .map_err(|e| AppError::DatabaseError(e));
+            .map_err(AppError::DatabaseError);
 
         dbg!(&simple_user);
 
@@ -111,7 +110,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_user = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_optional(&*self.connection_pool)
             .await
-            .map_err(|e| AppError::DatabaseError(e));
+            .map_err(AppError::DatabaseError);
 
         dbg!(&simple_user);
 
@@ -147,7 +146,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_users = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_all(&*self.connection_pool)
             .await
-            .map_err(|e| AppError::DatabaseError(e));
+            .map_err(AppError::DatabaseError);
 
         dbg!(&simple_users);
 
@@ -177,7 +176,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_user = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_optional(&*self.connection_pool)
             .await
-            .map_err(|e| AppError::DatabaseError(e));
+            .map_err(AppError::DatabaseError);
 
         dbg!(&simple_user);
 
