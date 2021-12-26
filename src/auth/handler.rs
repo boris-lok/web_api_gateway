@@ -68,8 +68,6 @@ mod v1 {
     #[cfg(test)]
     mod test {
         use crate::auth::handler::decode_token;
-        use mockall::mock;
-
         use crate::auth::json::Token;
         use crate::auth::repo::MockAuthRepository;
         use crate::user::json::SimpleUser;
@@ -122,7 +120,6 @@ mod v1 {
             let runtime = tokio::runtime::Runtime::new().unwrap();
 
             let mut user_mock_repo = MockUserRepository::new();
-            let mut auth_mock_repo = MockAuthRepository::new();
 
             user_mock_repo
                 .expect_check_user_is_exist()
