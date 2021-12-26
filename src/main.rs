@@ -2,8 +2,9 @@
 
 use std::sync::Arc;
 
-use sqlx::{Pool, Postgres};
+use crate::core::config::Config;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::{Pool, Postgres};
 
 use crate::user::repo::PostgresUserRepository;
 
@@ -13,46 +14,28 @@ mod user;
 
 #[tokio::main]
 async fn main() {
-    let debug = dotenv::var("DEBUG")
-        .map(|x| x.parse::<bool>().unwrap_or(true))
-        .unwrap_or_else(|_| true);
+    let config = Config::new();
 
-    if debug {
-        let _ = dotenv::from_path("dev.env").expect("Can't find the dev.env.");
-    } else {
-        let _ = dotenv::from_path("prod.env").expect("Can't find the prod.env.");
-    }
-
-    let connection_pool = create_database_connection()
+    let connection_pool = create_database_connection(&config)
         .await
         .expect("Can't create a database connection pool.");
 
     let connection_pool = Arc::new(connection_pool);
-    let mut repo = PostgresUserRepository::new(Arc::clone(&connection_pool));
+    let repo = PostgresUserRepository::new(Arc::clone(&connection_pool));
 
     connection_pool.close().await;
 }
 
-async fn create_database_connection() -> Option<Pool<Postgres>> {
-    let postgres_host = dotenv::var("POSTGRES_HOST").expect("Can't read postgres_host from env.");
-    let postgres_user = dotenv::var("POSTGRES_USER").expect("Can't read postgres_user from env.");
-    let postgres_password =
-        dotenv::var("POSTGRES_PASSWORD").expect("Can't read postgres_password from env.");
-    let postgres_port = dotenv::var("POSTGRES_PORT")
-        .expect("Can't read postgres_port from env.")
-        .parse::<u16>()
-        .expect("Can't parse the port to u16 type.");
-    let postgres_database = dotenv::var("POSTGRES_DB").expect("Can't read postgres_db from env.");
-
+async fn create_database_connection(config: &Config) -> Option<Pool<Postgres>> {
     let connection_options = PgConnectOptions::new()
-        .host(&postgres_host)
-        .database(&postgres_database)
-        .username(&postgres_user)
-        .password(&postgres_password)
-        .port(postgres_port);
+        .host(&config.postgres_host)
+        .database(&config.postgres_database)
+        .username(&config.postgres_username)
+        .password(&config.postgres_password)
+        .port(config.postgres_port);
 
     let connection_pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(config.postgres_max_connections)
         .connect_with(connection_options)
         .await
         .expect("Can't connect to database");
