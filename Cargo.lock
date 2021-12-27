@@ -1446,8 +1446,12 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d83e4a0dd79545b61c6ca453a28d0a88829487869a8559a35a3192f1b6aacad8"
 dependencies = [
+ "bigdecimal",
+ "chrono",
  "postgres-types",
  "sea-query-derive",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

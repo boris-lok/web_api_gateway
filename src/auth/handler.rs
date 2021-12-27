@@ -61,7 +61,8 @@ mod v1 {
     }
 
     async fn renew(auth_repo: &dyn AuthRepository, id: Uuid) -> Result<(), AppError> {
-        auth_repo.renew(id).await
+        let expired_at = chrono::Utc::now() + chrono::Duration::days(30);
+        auth_repo.renew(id, expired_at).await
     }
 
     #[cfg(test)]
