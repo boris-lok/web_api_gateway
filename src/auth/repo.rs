@@ -47,7 +47,7 @@ impl PostgresAuthRepository {
     ) -> Result<(), AppError> {
         let sql = Query::update()
             .table(Tokens::Table)
-            .values(vec![(Tokens::ExpiredAt, expired_at.to_string().into())])
+            .values(vec![(Tokens::ExpiredAt, expired_at.into())])
             .and_where(Expr::col(Tokens::UserId).eq(id.to_string()))
             .to_string(PostgresQueryBuilder);
 
@@ -77,9 +77,9 @@ impl AuthRepository for PostgresAuthRepository {
             .into_table(Tokens::Table)
             .columns(vec![Tokens::UserId, Tokens::Token, Tokens::ExpiredAt])
             .values_panic(vec![
-                id.to_string().into(),
+                id.into(),
                 token.into(),
-                expired_at.to_string().into(),
+                expired_at.into(),
             ])
             .returning(
                 Query::select()

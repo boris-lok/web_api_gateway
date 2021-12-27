@@ -59,12 +59,12 @@ impl UserRepository for PostgresUserRepository {
                 Users::UpdatedAt,
             ])
             .values_panic(vec![
-                uuid::Uuid::new_v4().to_string().into(),
+                uuid::Uuid::new_v4().into(),
                 user.name.as_str().into(),
                 user.password.as_str().into(),
                 user.role.into(),
-                chrono::Utc::now().to_string().into(),
-                chrono::Utc::now().to_string().into(),
+                chrono::Utc::now().into(),
+                chrono::Utc::now().into(),
             ])
             .to_owned()
             .returning(
@@ -102,7 +102,7 @@ impl UserRepository for PostgresUserRepository {
                 Users::UpdatedAt,
             ])
             .from(Users::Table)
-            .and_where(Expr::col(Users::Id).eq(id.to_string().as_str()))
+            .and_where(Expr::col(Users::Id).eq(id.to_string()))
             .to_string(PostgresQueryBuilder);
 
         dbg!(&sql);
@@ -135,7 +135,7 @@ impl UserRepository for PostgresUserRepository {
                 keyword.map(|e| Expr::col(Users::Name).like(format!("%{}%", e).as_str())),
             )
             .and_where_option(
-                updated_at.map(|e| Expr::col(Users::UpdatedAt).gt(e.to_string().as_str())),
+                updated_at.map(|e| Expr::col(Users::UpdatedAt).gt(e)),
             )
             .from(Users::Table)
             .limit(page_size as u64)
