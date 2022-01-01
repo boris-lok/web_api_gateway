@@ -4,7 +4,7 @@ create table users
 (
     id         uuid         not null primary key,
     name       varchar(64)  not null,
-    password   varchar(128) not null,
+    password   varchar(256) not null,
     role       smallint     not null,
     created_at timestamptz,
     updated_at timestamptz

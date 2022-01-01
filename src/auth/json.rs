@@ -8,7 +8,7 @@ pub struct AuthRequest {
     pub password: String,
 }
 
-#[derive(Debug, Deserialize, FromRow)]
+#[derive(Debug, Deserialize, Serialize, FromRow)]
 pub struct Token {
     pub user_id: uuid::Uuid,
     pub token: String,

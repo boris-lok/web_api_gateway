@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use mockall::predicate::*;
 use mockall::*;
+use mockall::predicate::*;
 use sea_query::{Expr, PostgresQueryBuilder, Query};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
@@ -14,7 +14,12 @@ use crate::user::json::{SimpleUser, User, Users};
 #[automock]
 #[async_trait]
 pub trait UserRepository {
-    async fn create(&self, user: &User) -> Result<SimpleUser, AppError>;
+    async fn create(
+        &self,
+        username: &str,
+        password: &str,
+        role: i16,
+    ) -> Result<SimpleUser, AppError>;
 
     async fn get(&self, id: &uuid::Uuid) -> Result<Option<SimpleUser>, AppError>;
 
@@ -25,11 +30,7 @@ pub trait UserRepository {
         page_size: usize,
     ) -> Result<Vec<SimpleUser>, AppError>;
 
-    async fn check_user_is_exist(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> Result<Option<SimpleUser>, AppError>;
+    async fn get_by_name(&self, username: &str) -> Result<Option<User>, AppError>;
 }
 
 #[derive(Clone)]
@@ -47,7 +48,12 @@ impl PostgresUserRepository {
 
 #[async_trait]
 impl UserRepository for PostgresUserRepository {
-    async fn create(&self, user: &User) -> Result<SimpleUser, AppError> {
+    async fn create(
+        &self,
+        username: &str,
+        password: &str,
+        role: i16,
+    ) -> Result<SimpleUser, AppError> {
         let sql = Query::insert()
             .into_table(Users::Table)
             .columns(vec![
@@ -60,9 +66,9 @@ impl UserRepository for PostgresUserRepository {
             ])
             .values_panic(vec![
                 uuid::Uuid::new_v4().into(),
-                user.name.as_str().into(),
-                user.password.as_str().into(),
-                user.role.into(),
+                username.into(),
+                password.into(),
+                role.into(),
                 chrono::Utc::now().into(),
                 chrono::Utc::now().into(),
             ])
@@ -134,9 +140,7 @@ impl UserRepository for PostgresUserRepository {
             .and_where_option(
                 keyword.map(|e| Expr::col(Users::Name).like(format!("%{}%", e).as_str())),
             )
-            .and_where_option(
-                updated_at.map(|e| Expr::col(Users::UpdatedAt).gt(e)),
-            )
+            .and_where_option(updated_at.map(|e| Expr::col(Users::UpdatedAt).gt(e)))
             .from(Users::Table)
             .limit(page_size as u64)
             .to_string(PostgresQueryBuilder);
@@ -153,33 +157,29 @@ impl UserRepository for PostgresUserRepository {
         simple_users
     }
 
-    async fn check_user_is_exist(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> Result<Option<SimpleUser>, AppError> {
+    async fn get_by_name(&self, username: &str) -> Result<Option<User>, AppError> {
         let sql = Query::select()
             .columns(vec![
                 Users::Id,
                 Users::Name,
+                Users::Password,
                 Users::Role,
                 Users::CreatedAt,
                 Users::UpdatedAt,
             ])
             .from(Users::Table)
             .and_where(Expr::col(Users::Name).eq(username))
-            .and_where(Expr::col(Users::Password).eq(password))
             .to_string(PostgresQueryBuilder);
 
         dbg!(&sql);
 
-        let simple_user = sqlx::query_as::<_, SimpleUser>(sql.as_str())
+        let user = sqlx::query_as::<_, User>(sql.as_str())
             .fetch_optional(&*self.connection_pool)
             .await
             .map_err(AppError::DatabaseError);
 
-        dbg!(&simple_user);
+        dbg!(&user);
 
-        simple_user
+        user
     }
 }
