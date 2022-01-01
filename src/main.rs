@@ -2,15 +2,20 @@
 
 use std::sync::Arc;
 
-use crate::core::config::Config;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
+use warp::Filter;
 
+use crate::auth::repo::PostgresAuthRepository;
+use crate::core::config::Config;
+use crate::core::environment::Environment;
 use crate::user::repo::PostgresUserRepository;
 
 mod auth;
 mod core;
 mod user;
+
+type WebResult<T> = std::result::Result<T, warp::reject::Rejection>;
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +26,16 @@ async fn main() {
         .expect("Can't create a database connection pool.");
 
     let connection_pool = Arc::new(connection_pool);
-    let repo = PostgresUserRepository::new(Arc::clone(&connection_pool));
+    let user_repo = PostgresUserRepository::new(Arc::clone(&connection_pool));
+    let auth_repo = PostgresAuthRepository::new(Arc::clone(&connection_pool));
+
+    let env = Environment::new(config, Arc::new(auth_repo), Arc::new(user_repo));
+
+    let auth_routes = auth::route::routes(env.clone());
+    let user_routes = user::route::routes(env.clone());
+    let routes = auth_routes.or(user_routes);
+
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
     connection_pool.close().await;
 }

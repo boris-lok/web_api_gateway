@@ -23,7 +23,14 @@ impl From<User> for SimpleUser {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest {
+    pub name: String,
+    pub password: String,
+    pub role: i16,
+}
+
+#[derive(Debug, Clone, FromRow)]
 pub struct User {
     pub id: Option<uuid::Uuid>,
     pub name: String,

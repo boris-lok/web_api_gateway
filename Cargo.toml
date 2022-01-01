@@ -43,6 +43,9 @@ features = ["derive", "postgres-types", "postgres-uuid", "postgres-chrono"]
 [dependencies.jsonwebtoken]
 version = "7.2.0"
 
+[dependencies.rust-argon2]
+version = "0.8.3"
+
 [dependencies.mockall]
 version = "0.11.0"
 

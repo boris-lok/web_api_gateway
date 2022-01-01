@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use mockall::*;
 use mockall::predicate::*;
+use mockall::*;
 use sea_query::{Expr, PostgresQueryBuilder, Query};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
@@ -29,7 +29,8 @@ pub trait AuthRepository {
     ) -> Result<(), AppError>;
 }
 
-struct PostgresAuthRepository {
+#[derive(Clone)]
+pub struct PostgresAuthRepository {
     connection_pool: Arc<Pool<Postgres>>,
 }
 
@@ -76,11 +77,7 @@ impl AuthRepository for PostgresAuthRepository {
         let sql = Query::insert()
             .into_table(Tokens::Table)
             .columns(vec![Tokens::UserId, Tokens::Token, Tokens::ExpiredAt])
-            .values_panic(vec![
-                id.into(),
-                token.into(),
-                expired_at.into(),
-            ])
+            .values_panic(vec![id.into(), token.into(), expired_at.into()])
             .returning(
                 Query::select()
                     .columns(vec![Tokens::UserId, Tokens::Token, Tokens::ExpiredAt])
