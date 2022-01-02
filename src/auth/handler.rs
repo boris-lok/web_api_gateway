@@ -1,7 +1,6 @@
-use jsonwebtoken::{decode, DecodingKey, encode, EncodingKey, Header, TokenData, Validation};
+use jsonwebtoken::{encode, EncodingKey, Header};
 
 use crate::auth::json::Claims;
-use crate::core::error::AppError;
 
 fn create_token(claims: Claims, secret_key: &str) -> String {
     let token = encode(
@@ -10,15 +9,6 @@ fn create_token(claims: Claims, secret_key: &str) -> String {
         &EncodingKey::from_secret(secret_key.as_bytes()),
     );
     token.unwrap()
-}
-
-fn decode_token(token: &str, secret_key: &str) -> Result<TokenData<Claims>, AppError> {
-    decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret_key.as_bytes()),
-        &Validation::default(),
-    )
-    .map_err(|_| AppError::DecodeClaimsFailed)
 }
 
 pub mod v1 {
@@ -96,7 +86,6 @@ pub mod v1 {
 
     #[cfg(test)]
     mod test {
-        use crate::auth::handler::decode_token;
         use crate::auth::repo::MockAuthRepository;
         use crate::core::util::hash_password;
         use crate::user::json::User;
@@ -177,40 +166,6 @@ pub mod v1 {
             let token = create_token(claims, config.secret_key.as_str());
 
             assert!(!token.is_empty());
-        }
-
-        #[test]
-        fn it_can_decode_token() {
-            let config = Config::new();
-            let claims = Claims::new(
-                uuid::Uuid::new_v4().to_string(),
-                chrono::Utc::now().timestamp() as usize,
-                0,
-            );
-            let token = create_token(claims, config.secret_key.as_str());
-
-            assert!(!token.is_empty());
-
-            let claims = decode_token(token.as_str(), config.secret_key.as_str());
-
-            assert!(claims.is_ok());
-        }
-
-        #[test]
-        fn it_can_not_decode_token_when_token_is_expired() {
-            let config = Config::new();
-            let claims = Claims::new(
-                uuid::Uuid::new_v4().to_string(),
-                (chrono::Utc::now() - chrono::Duration::seconds(1)).timestamp() as usize,
-                0,
-            );
-            let token = create_token(claims, config.secret_key.as_str());
-
-            assert!(!token.is_empty());
-
-            let claims = decode_token(token.as_str(), config.secret_key.as_str());
-
-            assert!(claims.is_err());
         }
 
         fn mock_returning(user_repo: &mut MockUserRepository, auth_repo: &mut MockAuthRepository) {
