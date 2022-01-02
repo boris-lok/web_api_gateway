@@ -1,17 +1,67 @@
 use std::convert::Infallible;
 use std::error::Error;
+
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use tracing::error;
+use warp::{Filter, Rejection, Reply};
+use warp::http::{HeaderMap, HeaderValue, StatusCode};
 
+use crate::{Environment, WebResult};
+use crate::auth::json::Claims;
 use crate::core::error::{AppError, ErrorResponse};
-use warp::http::StatusCode;
-use warp::{Filter, Reply};
 
-use crate::Environment;
+const BEARER: &str = "Bearer ";
 
 pub fn with_env(
     env: Environment,
 ) -> impl Filter<Extract = (Environment,), Error = Infallible> + Clone {
     warp::any().map(move || env.clone())
+}
+
+pub fn authenticated(
+    secret_key: String,
+) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
+    warp::header::headers_cloned()
+        .map(move |headers: HeaderMap<HeaderValue>| headers)
+        .and(warp::any().map(move || secret_key.clone()))
+        .and_then(authorize)
+}
+
+async fn authorize(headers: HeaderMap<HeaderValue>, secret_key: String) -> WebResult<Claims> {
+    match jwt_from_header(&headers) {
+        Ok(jwt) => {
+            let claims = decode::<Claims>(
+                jwt.as_str(),
+                &DecodingKey::from_secret(secret_key.as_bytes()),
+                &Validation::default(),
+            );
+
+            if claims.is_err() {
+                return Err(warp::reject::custom(AppError::AuthorizeFailed));
+            }
+
+            let claims = claims.unwrap().claims;
+            Ok(claims)
+        }
+        Err(e) => Err(warp::reject::custom(e)),
+    }
+}
+
+fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String, AppError> {
+    let header = headers
+        .get(warp::http::header::AUTHORIZATION)
+        .map(|value| std::str::from_utf8(value.as_bytes()).ok())
+        .flatten();
+
+    return match header {
+        None => Err(AppError::TokenNotExist),
+        Some(value) => {
+            if !value.starts_with(BEARER) {
+                return Err(AppError::TokenNotExist);
+            }
+            Ok(value.trim_start_matches(BEARER).to_owned())
+        }
+    };
 }
 
 pub async fn rejection_handler(err: warp::Rejection) -> Result<impl Reply, Infallible> {
@@ -26,9 +76,6 @@ pub async fn rejection_handler(err: warp::Rejection) -> Result<impl Reply, Infal
     } else if let Some(AppError::AuthorizeFailed) = err.find() {
         code = StatusCode::UNAUTHORIZED;
         message = "un-authorized.";
-    } else if let Some(AppError::DecodeClaimsFailed) = err.find() {
-        code = StatusCode::BAD_REQUEST;
-        message = "decode claims failed.";
     } else if let Some(AppError::DatabaseError) = err.find() {
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = "database error.";

@@ -3,10 +3,10 @@ use serde::Serialize;
 #[derive(Debug, PartialEq)]
 pub enum AppError {
     AuthorizeFailed,
-    DecodeClaimsFailed,
     DatabaseError,
     HashPasswordFailed,
     UserNotExist,
+    TokenNotExist,
 }
 
 impl warp::reject::Reject for AppError {}

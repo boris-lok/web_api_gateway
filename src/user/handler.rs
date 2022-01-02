@@ -3,11 +3,11 @@ pub mod v1 {
 
     use warp::Reply;
 
+    use crate::{Config, Environment, WebResult};
     use crate::core::error::AppError;
     use crate::core::util::hash_password;
     use crate::user::json::{CreateUserRequest, SimpleUser};
     use crate::user::repo::UserRepository;
-    use crate::{Config, Environment, WebResult};
 
     pub async fn create_user_handler(
         req: CreateUserRequest,
@@ -41,8 +41,8 @@ pub mod v1 {
 
     #[cfg(test)]
     mod test {
-        use crate::user::repo::MockUserRepository;
         use crate::Config;
+        use crate::user::repo::MockUserRepository;
 
         use super::*;
 
