@@ -15,15 +15,16 @@ pub mod v1 {
     use std::sync::Arc;
 
     use uuid::Uuid;
+    use warp::http::StatusCode;
     use warp::Reply;
 
-    use crate::{Environment, WebResult};
     use crate::auth::handler::create_token;
     use crate::auth::json::{AuthRequest, Claims, Token};
     use crate::auth::repo::AuthRepository;
     use crate::core::config::Config;
     use crate::core::error::AppError;
     use crate::user::repo::UserRepository;
+    use crate::{Environment, WebResult};
 
     pub async fn login_handler(req: AuthRequest, env: Environment) -> WebResult<impl Reply> {
         login(
@@ -75,11 +76,31 @@ pub mod v1 {
         }
     }
 
-    pub async fn logout(auth_repo: Arc<impl AuthRepository>, id: Uuid) -> Result<(), AppError> {
+    pub async fn logout_handler(claims: Claims, env: Environment) -> WebResult<impl Reply> {
+        logout(
+            env.auth_repo,
+            uuid::Uuid::parse_str(claims.sub.as_str()).unwrap(),
+        )
+        .await
+        .map(|_| warp::reply::with_status("", StatusCode::OK))
+        .map_err(warp::reject::custom)
+    }
+
+    async fn logout(auth_repo: Arc<impl AuthRepository>, id: Uuid) -> Result<(), AppError> {
         auth_repo.expire(id).await
     }
 
-    pub async fn renew(auth_repo: Arc<impl AuthRepository>, id: Uuid) -> Result<(), AppError> {
+    pub async fn renew_handler(claims: Claims, env: Environment) -> WebResult<impl Reply> {
+        renew(
+            env.auth_repo,
+            uuid::Uuid::parse_str(claims.sub.as_str()).unwrap(),
+        )
+        .await
+        .map(|_| warp::reply::with_status("", StatusCode::OK))
+        .map_err(warp::reject::custom)
+    }
+
+    async fn renew(auth_repo: Arc<impl AuthRepository>, id: Uuid) -> Result<(), AppError> {
         let expired_at = chrono::Utc::now() + chrono::Duration::days(30);
         auth_repo.renew(id, expired_at).await
     }

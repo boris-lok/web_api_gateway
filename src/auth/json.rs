@@ -17,9 +17,9 @@ pub struct Token {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    sub: String,
-    exp: usize,
-    role: u8,
+    pub sub: String,
+    pub exp: usize,
+    pub role: u8,
 }
 
 impl Claims {
