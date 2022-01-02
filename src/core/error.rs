@@ -1,29 +1,12 @@
 use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AppError {
     AuthorizeFailed,
-    DecodeClaimsFailed(jsonwebtoken::errors::Error),
-    NotFound,
-    DatabaseError(sqlx::Error),
-    CreateUserFailed,
+    DecodeClaimsFailed,
+    DatabaseError,
     HashPasswordFailed,
     UserNotExist,
-}
-
-impl PartialEq for AppError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (&AppError::AuthorizeFailed, &AppError::AuthorizeFailed) => true,
-            (&AppError::DecodeClaimsFailed(_), &AppError::DecodeClaimsFailed(_)) => true,
-            (&AppError::NotFound, &AppError::NotFound) => true,
-            (&AppError::DatabaseError(_), &AppError::DatabaseError(_)) => true,
-            (&AppError::CreateUserFailed, &AppError::CreateUserFailed) => true,
-            (&AppError::HashPasswordFailed, &AppError::HashPasswordFailed) => true,
-            (&AppError::UserNotExist, &AppError::UserNotExist) => true,
-            (_, _) => false,
-        }
-    }
 }
 
 impl warp::reject::Reject for AppError {}

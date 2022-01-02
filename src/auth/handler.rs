@@ -18,7 +18,7 @@ fn decode_token(token: &str, secret_key: &str) -> Result<TokenData<Claims>, AppE
         &DecodingKey::from_secret(secret_key.as_bytes()),
         &Validation::default(),
     )
-    .map_err(AppError::DecodeClaimsFailed)
+    .map_err(|_| AppError::DecodeClaimsFailed)
 }
 
 pub mod v1 {

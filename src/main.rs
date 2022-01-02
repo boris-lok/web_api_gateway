@@ -9,6 +9,7 @@ use warp::Filter;
 use crate::auth::repo::PostgresAuthRepository;
 use crate::core::config::Config;
 use crate::core::environment::Environment;
+use crate::core::middleware::rejection_handler;
 use crate::user::repo::PostgresUserRepository;
 
 mod auth;
@@ -37,7 +38,10 @@ async fn main() {
 
     let auth_routes = auth::route::routes(env.clone());
     let user_routes = user::route::routes(env.clone());
-    let routes = auth_routes.or(user_routes).with(warp::trace::request());
+    let routes = auth_routes
+        .or(user_routes)
+        .recover(rejection_handler)
+        .with(warp::trace::request());
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 

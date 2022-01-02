@@ -58,7 +58,7 @@ impl PostgresAuthRepository {
             .execute(&*self.connection_pool)
             .await
             .map(|res| res.rows_affected())
-            .map_err(AppError::DatabaseError);
+            .map_err(|_| AppError::DatabaseError);
 
         dbg!(&res);
 
@@ -90,7 +90,7 @@ impl AuthRepository for PostgresAuthRepository {
         let token = sqlx::query_as::<_, Token>(sql.as_str())
             .fetch_one(&*self.connection_pool)
             .await
-            .map_err(AppError::DatabaseError);
+            .map_err(|_| AppError::DatabaseError);
 
         dbg!(&token);
 
