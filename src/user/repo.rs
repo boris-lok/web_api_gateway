@@ -91,7 +91,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_user = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_one(&*self.connection_pool)
             .await
-            .map_err(AppError::DatabaseError);
+            .map_err(|_| AppError::DatabaseError);
 
         dbg!(&simple_user);
 
@@ -116,7 +116,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_user = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_optional(&*self.connection_pool)
             .await
-            .map_err(AppError::DatabaseError);
+            .map_err(|_| AppError::DatabaseError);
 
         dbg!(&simple_user);
 
@@ -150,7 +150,7 @@ impl UserRepository for PostgresUserRepository {
         let simple_users = sqlx::query_as::<_, SimpleUser>(sql.as_str())
             .fetch_all(&*self.connection_pool)
             .await
-            .map_err(AppError::DatabaseError);
+            .map_err(|_| AppError::DatabaseError);
 
         dbg!(&simple_users);
 
@@ -176,7 +176,7 @@ impl UserRepository for PostgresUserRepository {
         let user = sqlx::query_as::<_, User>(sql.as_str())
             .fetch_optional(&*self.connection_pool)
             .await
-            .map_err(AppError::DatabaseError);
+            .map_err(|_| AppError::DatabaseError);
 
         dbg!(&user);
 
