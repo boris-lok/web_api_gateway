@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use warp::Filter;
 
 use crate::auth::repo::PostgresAuthRepository;
@@ -21,6 +21,10 @@ type WebResult<T> = std::result::Result<T, warp::reject::Rejection>;
 async fn main() {
     let config = Config::new();
 
+    tracing_subscriber::fmt()
+        .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
+        .init();
+
     let connection_pool = create_database_connection(&config)
         .await
         .expect("Can't create a database connection pool.");
@@ -33,7 +37,7 @@ async fn main() {
 
     let auth_routes = auth::route::routes(env.clone());
     let user_routes = user::route::routes(env.clone());
-    let routes = auth_routes.or(user_routes);
+    let routes = auth_routes.or(user_routes).with(warp::trace::request());
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
