@@ -1,113 +1,76 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use mockall::predicate::*;
 use mockall::*;
-use sea_query::{Expr, PostgresQueryBuilder, Query};
-use sqlx::{Pool, Postgres};
+use mockall::predicate::*;
+use r2d2_redis::{r2d2, redis, RedisConnectionManager};
 use uuid::Uuid;
 
-use crate::auth::json::{Token, Tokens};
-use crate::core::error::AppError;
+use crate::AppResult;
 
 #[automock]
-#[async_trait]
 pub trait AuthRepository {
-    async fn create(
-        &self,
-        id: uuid::Uuid,
-        token: &str,
-        expired_at: chrono::DateTime<chrono::Utc>,
-    ) -> Result<Token, AppError>;
+    fn create(&self, id: Uuid, token: &str, seconds: usize) -> AppResult<String>;
 
-    async fn expire(&self, id: uuid::Uuid) -> Result<(), AppError>;
+    fn expire(&self, id: Uuid) -> AppResult<()>;
 
-    async fn renew(
-        &self,
-        id: uuid::Uuid,
-        expired_at: chrono::DateTime<chrono::Utc>,
-    ) -> Result<(), AppError>;
+    fn renew(&self, id: Uuid, seconds: usize) -> AppResult<()>;
+
+    fn get(&self, id: Uuid) -> Option<String>;
 }
 
 #[derive(Clone)]
-pub struct PostgresAuthRepository {
-    connection_pool: Arc<Pool<Postgres>>,
+pub struct RedisAuthRepository {
+    connection_pool: r2d2::Pool<RedisConnectionManager>,
 }
 
-impl PostgresAuthRepository {
-    pub fn new(pool: Arc<Pool<Postgres>>) -> Self {
+impl RedisAuthRepository {
+    pub fn new(pool: r2d2::Pool<RedisConnectionManager>) -> Self {
         Self {
             connection_pool: pool,
         }
     }
 
-    async fn update_expired_at(
-        &self,
-        id: Uuid,
-        expired_at: chrono::DateTime<chrono::Utc>,
-    ) -> Result<(), AppError> {
-        let sql = Query::update()
-            .table(Tokens::Table)
-            .values(vec![(Tokens::ExpiredAt, expired_at.into())])
-            .and_where(Expr::col(Tokens::UserId).eq(id.to_string()))
-            .to_string(PostgresQueryBuilder);
+    fn user_id_to_key(&self, id: &Uuid) -> String {
+        format!("user_id: {}", id)
+    }
 
-        dbg!(&sql);
-
-        let res = sqlx::query(sql.as_str())
-            .execute(&*self.connection_pool)
-            .await
-            .map(|res| res.rows_affected())
-            .map_err(|_| AppError::DatabaseError);
-
-        dbg!(&res);
-
-        Ok(())
+    fn get_connection(&self) -> r2d2::PooledConnection<RedisConnectionManager> {
+        self.connection_pool.get().expect("Can't get redis pool")
     }
 }
 
 #[async_trait]
-impl AuthRepository for PostgresAuthRepository {
-    async fn create(
-        &self,
-        id: Uuid,
-        token: &str,
-        expired_at: chrono::DateTime<chrono::Utc>,
-    ) -> Result<Token, AppError> {
-        let sql = Query::insert()
-            .into_table(Tokens::Table)
-            .columns(vec![Tokens::UserId, Tokens::Token, Tokens::ExpiredAt])
-            .values_panic(vec![id.into(), token.into(), expired_at.into()])
-            .returning(
-                Query::select()
-                    .columns(vec![Tokens::UserId, Tokens::Token, Tokens::ExpiredAt])
-                    .take(),
-            )
-            .to_string(PostgresQueryBuilder);
+impl AuthRepository for RedisAuthRepository {
+    fn create(&self, id: Uuid, token: &str, seconds: usize) -> AppResult<String> {
+        redis::cmd("SETEX")
+            .arg(self.user_id_to_key(&id))
+            .arg(seconds)
+            .arg(token)
+            .execute(&mut *self.get_connection());
 
-        dbg!(&sql);
-
-        let token = sqlx::query_as::<_, Token>(sql.as_str())
-            .fetch_one(&*self.connection_pool)
-            .await
-            .map_err(|_| AppError::DatabaseError);
-
-        dbg!(&token);
-
-        token
+        Ok(token.to_owned())
     }
 
-    async fn expire(&self, id: Uuid) -> Result<(), AppError> {
-        let expired_at = chrono::Utc::now();
+    fn expire(&self, id: Uuid) -> AppResult<()> {
+        redis::cmd("DEL")
+            .arg(self.user_id_to_key(&id))
+            .execute(&mut *self.get_connection());
 
-        self.update_expired_at(id, expired_at).await
+        Ok(())
     }
 
-    async fn renew(
-        &self,
-        id: Uuid,
-        expired_at: chrono::DateTime<chrono::Utc>,
-    ) -> Result<(), AppError> {
-        self.update_expired_at(id, expired_at).await
+    fn renew(&self, id: Uuid, seconds: usize) -> AppResult<()> {
+        redis::cmd("Expire")
+            .arg(self.user_id_to_key(&id))
+            .arg(seconds)
+            .execute(&mut *self.get_connection());
+
+        Ok(())
+    }
+
+    fn get(&self, id: Uuid) -> Option<String> {
+        redis::cmd("GET")
+            .arg(self.user_id_to_key(&id))
+            .query::<String>(&mut *self.get_connection())
+            .ok()
     }
 }

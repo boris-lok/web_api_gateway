@@ -8,6 +8,10 @@ pub struct Config {
     pub postgres_password: String,
     pub postgres_port: u16,
     pub postgres_max_connections: u32,
+    pub redis_host: String,
+    pub redis_username: Option<String>,
+    pub redis_password: String,
+    pub redis_port: u16,
 }
 
 impl Config {
@@ -37,6 +41,15 @@ impl Config {
         let postgres_database =
             dotenv::var("POSTGRES_DB").expect("Can't read postgres_db from env.");
 
+        let redis_host = dotenv::var("REDIS_HOST").expect("Can't read redis host from env.");
+        let redis_username = dotenv::var("REDIS_USERNAME").ok();
+        let redis_password =
+            dotenv::var("REDIS_PASSWORD").expect("Can't read redis password from env.");
+        let redis_port = dotenv::var("REDIS_PORT")
+            .expect("Can't read redis port from env.")
+            .parse::<u16>()
+            .unwrap_or(6379);
+
         Self {
             debug,
             secret_key,
@@ -46,6 +59,10 @@ impl Config {
             postgres_password,
             postgres_port,
             postgres_max_connections: 10,
+            redis_host,
+            redis_username,
+            redis_password,
+            redis_port
         }
     }
 }

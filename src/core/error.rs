@@ -7,6 +7,7 @@ pub enum AppError {
     HashPasswordFailed,
     UserNotExist,
     TokenNotExist,
+    TokenIsExpired
 }
 
 impl warp::reject::Reject for AppError {}

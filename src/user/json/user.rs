@@ -1,4 +1,3 @@
-use sea_query::Iden;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -23,13 +22,6 @@ impl From<User> for SimpleUser {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateUserRequest {
-    pub name: String,
-    pub password: String,
-    pub role: i16,
-}
-
 #[derive(Debug, Clone, FromRow)]
 pub struct User {
     pub id: Option<uuid::Uuid>,
@@ -38,15 +30,4 @@ pub struct User {
     pub role: i16,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-#[derive(Iden)]
-pub enum Users {
-    Table,
-    Id,
-    Name,
-    Password,
-    Role,
-    CreatedAt,
-    UpdatedAt,
 }
