@@ -1,8 +1,9 @@
 use warp::{Filter, Reply};
 use warp::filters::BoxedFilter;
 
-use crate::auth::handler::v1::{login_handler, logout_handler, renew_handler};
-use crate::core::middleware::{authenticated, with_env};
+use crate::auth::handlers::v1::{login_handler, logout_handler, renew_handler};
+use crate::core::middlewares::authorization::authenticated;
+use crate::core::middlewares::with_env::with_env;
 use crate::Environment;
 
 pub fn routes(env: Environment) -> BoxedFilter<(impl Reply,)> {
@@ -14,13 +15,13 @@ pub fn routes(env: Environment) -> BoxedFilter<(impl Reply,)> {
 
     let logout_route = warp::path!("api" / "v1" / "logout")
         .and(warp::post())
-        .and(authenticated(env.config.secret_key.clone()))
+        .and(authenticated(env.clone()))
         .and(with_env(env.clone()))
         .and_then(logout_handler);
 
     let renew_route = warp::path!("api" / "v1" / "token" / "renew")
         .and(warp::post())
-        .and(authenticated(env.config.secret_key.clone()))
+        .and(authenticated(env.clone()))
         .and(with_env(env))
         .and_then(renew_handler);
 

@@ -52,6 +52,15 @@ version = "0.1.29"
 [dependencies.tracing-subscriber]
 version = "0.3.5"
 
+[dependencies.thiserror]
+version = "1.0.30"
+
+[dependencies.anyhow]
+version = "1.0.52"
+
+[dependencies.r2d2_redis]
+version = "0.14.0"
+
 [dependencies.mockall]
 version = "0.11.0"
 

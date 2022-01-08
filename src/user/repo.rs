@@ -9,7 +9,8 @@ use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
 use crate::core::error::AppError;
-use crate::user::json::{SimpleUser, User, Users};
+use crate::user::json::table::Users;
+use crate::user::json::user::{SimpleUser, User};
 
 #[automock]
 #[async_trait]
