@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use chrono::Utc;
 use uuid::Uuid;
-use warp::http::StatusCode;
 use warp::Reply;
 
+use crate::{Environment, WebResult};
 use crate::auth::handlers::{create_token, get_expired_seconds};
 use crate::auth::json::claims::Claims;
 use crate::auth::json::request::AuthRequest;
@@ -11,7 +12,6 @@ use crate::auth::repo::AuthRepository;
 use crate::core::config::Config;
 use crate::core::error::AppError;
 use crate::user::repo::UserRepository;
-use crate::{Environment, WebResult};
 
 pub async fn login_handler(req: AuthRequest, env: Environment) -> WebResult<impl Reply> {
     login(
@@ -22,7 +22,17 @@ pub async fn login_handler(req: AuthRequest, env: Environment) -> WebResult<impl
         req.password.as_str(),
     )
     .await
-    .map(|token| warp::reply::json(&token))
+    .map(|token| {
+        warp::reply::with_header(
+            "login success",
+            "set-cookie",
+            create_cookie(
+                token.as_str(),
+                chrono::Utc::now() + chrono::Duration::days(30),
+                30 * 24 * 3600,
+            ),
+        )
+    })
     .map_err(warp::reject::custom)
 }
 
@@ -63,7 +73,13 @@ pub async fn logout_handler(claims: Claims, env: Environment) -> WebResult<impl 
         env.auth_repo,
         uuid::Uuid::parse_str(claims.sub.as_str()).unwrap(),
     )
-    .map(|_| warp::reply::with_status("", StatusCode::OK))
+    .map(|_| {
+        warp::reply::with_header(
+            "logout success",
+            "set-cookie",
+            create_cookie("deleted", chrono::Utc::now(), 0),
+        )
+    })
     .map_err(warp::reject::custom)
 }
 
@@ -72,11 +88,22 @@ fn logout(auth_repo: Arc<impl AuthRepository>, id: Uuid) -> Result<(), AppError>
 }
 
 pub async fn renew_handler(claims: Claims, env: Environment) -> WebResult<impl Reply> {
+    let seconds = 30 * 24 * 3600;
     renew(
         env.auth_repo,
         uuid::Uuid::parse_str(claims.sub.as_str()).unwrap(),
     )
-    .map(|_| warp::reply::with_status("", StatusCode::OK))
+    .map(|_| {
+        warp::reply::with_header(
+            "renew success",
+            "set-cookie",
+            create_cookie(
+                create_token(claims, env.config.secret_key.as_str()).as_str(),
+                chrono::Utc::now() + chrono::Duration::days(30),
+                30 * 24 * 3600,
+            ),
+        )
+    })
     .map_err(warp::reject::custom)
 }
 
@@ -84,6 +111,15 @@ fn renew(auth_repo: Arc<impl AuthRepository>, id: Uuid) -> Result<(), AppError> 
     auth_repo
         .renew(id, get_expired_seconds())
         .map_err(|_| AppError::TokenNotExist)
+}
+
+fn create_cookie(token: &str, expired_at: chrono::DateTime<Utc>, max_age: usize) -> String {
+    format!(
+        "token={}; path=/; httpOnly; expires={}; max-age={}",
+        token,
+        expired_at.to_rfc2822(),
+        max_age
+    )
 }
 
 #[cfg(test)]
