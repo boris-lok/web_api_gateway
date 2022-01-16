@@ -15,6 +15,7 @@ use crate::user::repo::PostgresUserRepository;
 
 mod auth;
 mod core;
+mod proxy;
 mod user;
 
 type AppResult<T> = anyhow::Result<T>;
@@ -43,21 +44,21 @@ async fn main() {
 
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_headers(vec![
-            "access-control-allow-origin",
-            "content-type"
-        ])
+        .allow_headers(vec!["Access-Control-Allow-Origin", "Content-Type"])
         .allow_credentials(true)
         .expose_headers(vec!["set-cookie"])
         .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "PATCH"]);
 
     let auth_routes = auth::route::routes(env.clone());
     let user_routes = user::route::routes(env.clone());
+    let proxy_routes = proxy::route::routes(env.clone());
+
     let routes = auth_routes
         .or(user_routes)
+        .or(proxy_routes)
         .with(cors)
-        .recover(rejection_handler)
-        .with(warp::trace::request());
+        .with(warp::trace::request())
+        .recover(rejection_handler);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
