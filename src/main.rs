@@ -41,10 +41,21 @@ async fn main() {
 
     let env = Environment::new(config, Arc::new(auth_repo), Arc::new(user_repo));
 
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_headers(vec![
+            "access-control-allow-origin",
+            "content-type"
+        ])
+        .allow_credentials(true)
+        .expose_headers(vec!["set-cookie"])
+        .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "PATCH"]);
+
     let auth_routes = auth::route::routes(env.clone());
     let user_routes = user::route::routes(env.clone());
     let routes = auth_routes
         .or(user_routes)
+        .with(cors)
         .recover(rejection_handler)
         .with(warp::trace::request());
 
