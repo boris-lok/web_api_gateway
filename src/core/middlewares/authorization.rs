@@ -15,7 +15,7 @@ const BEARER: &str = "Bearer ";
 
 pub fn authenticated_from_header(
     env: Environment,
-) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
+) -> impl Filter<Extract=(Claims, ), Error=Rejection> + Clone {
     warp::header::headers_cloned()
         .map(move |headers: HeaderMap<HeaderValue>| headers)
         .and_then(jwt_from_header)
@@ -25,17 +25,15 @@ pub fn authenticated_from_header(
 
 pub fn authenticated_from_cookie(
     env: Environment,
-) -> impl Filter<Extract = (Claims,), Error = Rejection> + Clone {
+) -> impl Filter<Extract=(Claims, ), Error=Rejection> + Clone {
     warp::cookie::<String>("token")
         .and(warp::any().map(move || env.clone()))
         .and_then(authorize)
 }
 
 async fn authorize(jwt: String, env: Environment) -> WebResult<Claims> {
-    let validation_config = Validation {
-        validate_exp: false,
-        ..Default::default()
-    };
+    let mut validation_config = Validation::default();
+    validation_config.validate_exp = false;
 
     let claims = decode::<Claims>(
         jwt.as_str(),
@@ -67,8 +65,7 @@ fn check_is_expired(claims: &Claims, auth_repo: Arc<impl AuthRepository>) -> boo
 async fn jwt_from_header(headers: HeaderMap<HeaderValue>) -> WebResult<String> {
     let header = headers
         .get(warp::http::header::AUTHORIZATION)
-        .map(|value| std::str::from_utf8(value.as_bytes()).ok())
-        .flatten();
+        .and_then(|value| std::str::from_utf8(value.as_bytes()).ok());
 
     return match header {
         None => Err(warp::reject::custom(AppError::TokenNotExist)),

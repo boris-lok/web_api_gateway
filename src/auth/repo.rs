@@ -1,12 +1,9 @@
 use async_trait::async_trait;
-use mockall::*;
-use mockall::predicate::*;
 use r2d2_redis::{r2d2, redis, RedisConnectionManager};
 use uuid::Uuid;
 
 use crate::AppResult;
 
-#[automock]
 pub trait AuthRepository {
     fn create(&self, id: Uuid, token: &str, seconds: usize) -> AppResult<String>;
 
