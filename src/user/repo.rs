@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use mockall::*;
-use mockall::predicate::*;
 use sea_query::{Expr, PostgresQueryBuilder, Query};
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
@@ -12,7 +10,6 @@ use crate::core::error::AppError;
 use crate::user::json::table::Users;
 use crate::user::json::user::{SimpleUser, User};
 
-#[automock]
 #[async_trait]
 pub trait UserRepository {
     async fn create(
