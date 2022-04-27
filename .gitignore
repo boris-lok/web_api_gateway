@@ -2,4 +2,5 @@
 .idea
 env/dev.env
 env/prod.env
+proto/
 common
