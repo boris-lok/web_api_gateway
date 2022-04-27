@@ -7,6 +7,10 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::Postgres;
 use warp::Filter;
 
+use common::configs::postgres_config::PostgresConfig;
+use common::configs::redis_config::RedisConfig;
+use common::utils::tools::{create_database_connection, create_redis_connection};
+
 use crate::auth::repo::RedisAuthRepository;
 use crate::core::config::Config;
 use crate::core::environment::Environment;
@@ -23,24 +27,19 @@ type WebResult<T> = std::result::Result<T, warp::reject::Rejection>;
 
 #[tokio::main]
 async fn main() {
-    let config = Config::new();
+    dotenv::from_path("env/dev.env");
 
     tracing_subscriber::fmt()
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
         .init();
 
-    let database_connection_pool = create_database_connection(&config)
-        .await
-        .expect("Can't create a database connection pool.");
+    let postgres = PostgresConfig::new();
+    let database_connection_pool = create_database_connection(postgres).await
+        .expect("Can create a database connection pool.");
 
-    let redis_connection_pool =
-        create_redis_connection(&config).expect("Can't create a redis connection pool");
-
-    let connection_pool = Arc::new(database_connection_pool);
-    let user_repo = PostgresUserRepository::new(Arc::clone(&connection_pool));
-    let auth_repo = RedisAuthRepository::new(redis_connection_pool);
-
-    let env = Environment::new(config, Arc::new(auth_repo), Arc::new(user_repo));
+    let redis = RedisConfig::new();
+    let redis_connection = create_redis_connection(redis).await
+        .expect("Can create a redis connection.");
 
     let cors = warp::cors()
         .allow_any_origin()
@@ -49,8 +48,6 @@ async fn main() {
         .expose_headers(vec!["set-cookie"])
         .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "PATCH"]);
 
-    let auth_routes = auth::route::routes(env.clone());
-    let user_routes = user::route::routes(env.clone());
     let proxy_routes = proxy::route::routes(env.clone());
 
     let routes = auth_routes
@@ -62,37 +59,5 @@ async fn main() {
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
-    connection_pool.close().await;
-}
-
-async fn create_database_connection(config: &Config) -> Option<sqlx::Pool<Postgres>> {
-    let connection_options = PgConnectOptions::new()
-        .host(&config.postgres_host)
-        .database(&config.postgres_database)
-        .username(&config.postgres_username)
-        .password(&config.postgres_password)
-        .port(config.postgres_port);
-
-    let connection_pool = PgPoolOptions::new()
-        .max_connections(config.postgres_max_connections)
-        .connect_with(connection_options)
-        .await
-        .expect("Can't connect to database");
-
-    Some(connection_pool)
-}
-
-fn create_redis_connection(config: &Config) -> Option<r2d2::Pool<RedisConnectionManager>> {
-    let redis_uri = format!(
-        "redis://{}:{}@{}:{}",
-        &config.redis_username.as_ref().unwrap_or(&"".to_string()),
-        &config.redis_password,
-        &config.redis_host,
-        config.redis_port
-    );
-
-    RedisConnectionManager::new(redis_uri)
-        .map(|manager| r2d2::Pool::builder().build(manager).ok())
-        .ok()
-        .flatten()
+    database_connection_pool.close().await;
 }
