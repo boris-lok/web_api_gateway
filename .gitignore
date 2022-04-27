@@ -1,3 +1,5 @@
 /target
 .idea
-dev.env
+env/dev.env
+env/prod.env
+common

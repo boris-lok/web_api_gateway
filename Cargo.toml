@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["boris <boris.lok.tw@outlook.com>"]
 
-[dependencies]
+[lib]
+name = "common"
+path = "common/src/lib.rs"
 
 [dependencies.tokio]
 version = "1.17.0"
