@@ -11,9 +11,15 @@ use common::configs::postgres_config::PostgresConfig;
 use common::configs::redis_config::RedisConfig;
 use common::utils::tools::{create_database_connection, create_redis_connection};
 
+use crate::utils::env::Env;
+use pb::customer_services_client::CustomerServicesClient;
 
-type AppResult<T> = anyhow::Result<T>;
-type WebResult<T> = std::result::Result<T, warp::reject::Rejection>;
+mod customer;
+mod utils;
+
+mod pb {
+    include!("../gen/grpc.customer.rs");
+}
 
 #[tokio::main]
 async fn main() {
@@ -24,12 +30,14 @@ async fn main() {
         .init();
 
     let postgres = PostgresConfig::new();
-    let database_connection_pool = create_database_connection(postgres).await
+    let database_connection_pool = create_database_connection(postgres)
+        .await
         .expect("Can create a database connection pool.");
 
-    let redis = RedisConfig::new();
-    let redis_connection = create_redis_connection(redis).await
-        .expect("Can create a redis connection.");
+    // let redis = RedisConfig::new();
+    // let redis_connection = create_redis_connection(redis)
+    //    .await
+    //    .expect("Can create a redis connection.");
 
     let cors = warp::cors()
         .allow_any_origin()
@@ -38,12 +46,22 @@ async fn main() {
         .expose_headers(vec!["set-cookie"])
         .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "PATCH"]);
 
+    let grpc_customer_client = CustomerServicesClient::connect("http://127.0.0.1:50001")
+        .await
+        .unwrap();
+
+    let env = Env::new(true, grpc_customer_client);
+
     // let routes = proxy_routes
     //     .with(cors)
     //     .with(warp::trace::request());
     // .recover(rejection_handler);
 
-    // warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let routes = customer::routes::routes(env.clone())
+        .with(cors)
+        .with(warp::trace::request());
+
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
     database_connection_pool.close().await;
 }

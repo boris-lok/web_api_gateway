@@ -4,3 +4,4 @@ env/dev.env
 env/prod.env
 proto/
 common
+src/.DS_Store
