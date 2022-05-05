@@ -1,44 +1,84 @@
-use warp::hyper::StatusCode;
 
-use crate::customer::json::{CreateCustomerRequest, Customer};
+use warp::reject::Rejection;
+use warp::reply::{Reply, Response};
+
+use crate::customer::json::{
+    CreateCustomerRequest, Customer, ListCustomerRequest, UpdateCustomerRequest,
+};
 use crate::pb::GetCustomerRequest;
 use crate::Env;
 
-pub async fn get(req: u64, env: Env) -> Result<Box<dyn warp::Reply>, warp::reject::Rejection> {
+pub async fn get(req: u64, env: Env) -> Result<Response, Rejection> {
     let mut client = env.grpc_customer_client;
 
-    let response = client.get(GetCustomerRequest { id: req }).await;
-
-    if response.is_err() {
-        return Err(warp::reject::reject());
-    }
-
-    let customer = response.unwrap().into_inner().customer;
-
-    if customer.is_none() {
-        return Ok(Box::new(StatusCode::OK));
-    }
-
-    let customer: Customer = customer.unwrap().into();
-
-    Ok(Box::new(warp::reply::json(&customer)))
+    client
+        .get(GetCustomerRequest { id: req })
+        .await
+        .map(|c| {
+            let customer = c.into_inner().customer;
+            match customer {
+                None => warp::reply::reply().into_response(),
+                Some(c) => {
+                    let c: Customer = c.into();
+                    warp::reply::json(&c).into_response()
+                }
+            }
+        })
+        .map_err(|err| warp::reject::reject())
 }
 
-pub async fn create(
-    req: CreateCustomerRequest,
-    env: Env,
-) -> Result<Box<dyn warp::Reply>, warp::reject::Rejection> {
+pub async fn create(req: CreateCustomerRequest, env: Env) -> Result<impl Reply, Rejection> {
     let mut client = env.grpc_customer_client;
 
     let req: crate::pb::CreateCustomerRequest = req.into();
 
-    let response = client.create(req).await;
+    client
+        .create(req)
+        .await
+        .map(|c| {
+            let c: Customer = c.into_inner().into();
+            warp::reply::json(&c)
+        })
+        .map_err(|err| {
 
-    if response.is_err() {
-        return Err(warp::reject::reject());
-    }
+            let msg = err.to_string();
+            tracing::error!(%msg);
 
-    let customer: Customer = response.unwrap().into_inner().into();
+            warp::reject::reject()
+        })
+}
 
-    Ok(Box::new(warp::reply::json(&customer)))
+pub async fn update(req: UpdateCustomerRequest, env: Env) -> Result<impl Reply, Rejection> {
+    let mut client = env.grpc_customer_client;
+
+    let req: crate::pb::UpdateCustomerRequest = req.into();
+
+    client
+        .update(req)
+        .await
+        .map(|c| {
+            let c: Customer = c.into_inner().into();
+            warp::reply::json(&c)
+        })
+        .map_err(|err| warp::reject::reject())
+}
+
+pub async fn list(req: ListCustomerRequest, env: Env) -> Result<impl Reply, Rejection> {
+    let mut client = env.grpc_customer_client;
+
+    let req: crate::pb::ListCustomerRequest = req.into();
+
+    client
+        .list(req)
+        .await
+        .map(|c| {
+            let c = c
+                .into_inner()
+                .customers
+                .into_iter()
+                .map(|c| c.into())
+                .collect::<Vec<Customer>>();
+            warp::reply::json(&c)
+        })
+        .map_err(|err| warp::reject::reject())
 }
