@@ -1,10 +1,8 @@
-
+use common::json::customer::Customer;
 use warp::reject::Rejection;
 use warp::reply::{Reply, Response};
 
-use crate::customer::json::{
-    CreateCustomerRequest, Customer, ListCustomerRequest, UpdateCustomerRequest,
-};
+use crate::customer::json::{CreateCustomerRequest, ListCustomerRequest, UpdateCustomerRequest};
 use crate::pb::GetCustomerRequest;
 use crate::Env;
 
@@ -40,7 +38,6 @@ pub async fn create(req: CreateCustomerRequest, env: Env) -> Result<impl Reply, 
             warp::reply::json(&c)
         })
         .map_err(|err| {
-
             let msg = err.to_string();
             tracing::error!(%msg);
 
