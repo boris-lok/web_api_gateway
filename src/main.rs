@@ -1,18 +1,18 @@
 #![allow(unused_variables, dead_code)]
 
-use common::configs::config::Config;
 use warp::Filter;
 
+use common::configs::config::Config;
 use common::configs::postgres_config::PostgresConfig;
-
 use common::utils::tools::{create_database_connection, tracing_initialize};
-
-use crate::utils::env::Env;
-use crate::utils::recover::rejection_handler;
 use pb::customer_services_client::CustomerServicesClient;
 use pb::product_services_client::ProductServicesClient;
 
+use crate::utils::env::Env;
+use crate::utils::recover::rejection_handler;
+
 mod customer;
+mod product;
 mod utils;
 
 mod pb {
@@ -39,13 +39,13 @@ async fn main() {
         .expose_headers(vec!["set-cookie"])
         .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "PATCH"]);
 
-    let grpc_customer_client = CustomerServicesClient::connect("[::1]:50001")
+    let grpc_customer_client = CustomerServicesClient::connect("http://127.0.0.1:50001")
         .await
         .unwrap();
 
-    let grpc_product_client = ProductServicesClient::connect("[::1]:50002").await.unwrap();
+    let grpc_product_client = ProductServicesClient::connect("http://127.0.0.1:50002").await.unwrap();
 
-    let env = Env::new(true, grpc_customer_client);
+    let env = Env::new(true, grpc_customer_client, grpc_product_client);
 
     let routes = customer::routes::routes(env.clone())
         .with(cors)

@@ -2967,6 +2967,7 @@ dependencies = [
  "prost",
  "r2d2_redis",
  "rust-argon2",
+ "rust_decimal",
  "sea-query",
  "serde",
  "snowflake",

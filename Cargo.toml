@@ -34,6 +34,9 @@ features = ["runtime-tokio-rustls", "all-types", "postgres"]
 version = "0.4.19"
 features = ["serde"]
 
+[dependencies.rust_decimal]
+version = "1.23.1"
+
 [dependencies.uuid]
 version = "0.8.2"
 features = ["v4", "serde"]

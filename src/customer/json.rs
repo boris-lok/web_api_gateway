@@ -1,19 +1,10 @@
 use chrono::{DateTime, Utc};
+use common::json::customer::Customer;
 use common::utils::time::timestamp2datetime;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 use crate::pb;
-
-#[derive(Debug, FromRow, Serialize, Deserialize, Clone)]
-pub struct Customer {
-    pub id: i64,
-    pub name: String,
-    pub email: Option<String>,
-    pub phone: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: Option<DateTime<Utc>>,
-}
 
 impl From<pb::Customer> for Customer {
     fn from(pc: pb::Customer) -> Self {
